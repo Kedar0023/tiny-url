@@ -1,0 +1,13 @@
+{
+  "name": "@tiny-url/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.7",
+    "pg": "^8.23.1"
+  }
+}

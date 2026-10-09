@@ -1,0 +1,110 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: tiny_url
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tiny_url_dev}
+      POSTGRES_DB: tiny_url
+    ports:
+      - "${POSTGRES_PORT:-5431}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tiny_url -d tiny_url"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-cache:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_CACHE_PORT:-6379}:6379"
+    volumes:
+      - redis-cache-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-analytics:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_ANALYTICS_PORT:-6380}:6379"
+    volumes:
+      - redis-analytics-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  db-migrate:
+    build:
+      context: .
+      dockerfile: apps/shortener/Dockerfile
+    command: ["bun", "run", "db:migrate"]
+    environment:
+      DATABASE_URL: postgres://tiny_url:${POSTGRES_PASSWORD:-tiny_url_dev}@postgres:5432/tiny_url
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  shortener:
+    build:
+      context: .
+      dockerfile: apps/shortener/Dockerfile
+    environment:
+      DATABASE_URL: postgres://tiny_url:${POSTGRES_PASSWORD:-tiny_url_dev}@postgres:5432/tiny_url
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+
+  redirect:
+    build:
+      context: .
+      dockerfile: apps/redirect/Dockerfile
+    environment:
+      DATABASE_URL: postgres://tiny_url:${POSTGRES_PASSWORD:-tiny_url_dev}@postgres:5432/tiny_url
+      REDIS_CACHE_URL: redis://redis-cache:6379
+      REDIS_ANALYTICS_URL: redis://redis-analytics:6379
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      redis-cache:
+        condition: service_healthy
+      redis-analytics:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./apps/web/index.html:/usr/share/nginx/html/index.html:ro
+      - ./apps/web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - shortener
+      - redirect
+
+  analytics:
+    build:
+      context: .
+      dockerfile: apps/analytics/Dockerfile
+    environment:
+      DATABASE_URL: postgres://tiny_url:${POSTGRES_PASSWORD:-tiny_url_dev}@postgres:5432/tiny_url
+      REDIS_ANALYTICS_URL: redis://redis-analytics:6379
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      redis-analytics:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-cache-data:
+  redis-analytics-data:

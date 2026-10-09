@@ -1,0 +1,16 @@
+{
+  "name": "@tiny-url/shortener",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiny-url/database": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "hono": "^4.13.13",
+    "nanoid": "^6.0.2"
+  }
+}

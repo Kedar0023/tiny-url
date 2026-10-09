@@ -1,0 +1,15 @@
+{
+  "name": "@tiny-url/analytics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tiny-url/database": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "ioredis": "^6.0.0"
+  }
+}
