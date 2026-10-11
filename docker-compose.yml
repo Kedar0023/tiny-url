@@ -90,6 +90,7 @@ services:
     depends_on:
       - shortener
       - redirect
+      - analytics
 
   analytics:
     build:
@@ -98,6 +99,8 @@ services:
     environment:
       DATABASE_URL: postgres://tiny_url:${POSTGRES_PASSWORD:-tiny_url_dev}@postgres:5432/tiny_url
       REDIS_ANALYTICS_URL: redis://redis-analytics:6379
+    ports:
+      - "3002:3002"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
